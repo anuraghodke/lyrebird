@@ -6,7 +6,6 @@ Verifies:
 - All modules can be imported
 - Version information is correct
 - CLI is properly configured
-- Environment variable loading works
 - Placeholder functions are in place
 """
 
@@ -35,18 +34,13 @@ class TestProjectStructure:
         pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
         assert pyproject_path.exists(), "pyproject.toml should exist"
 
-    def test_env_template_exists(self):
-        """Verify .env.template exists."""
-        env_template_path = Path(__file__).parent.parent / ".env.template"
-        assert env_template_path.exists(), ".env.template should exist"
-
     def test_all_source_modules_exist(self):
         """Verify all required source modules exist."""
         src_path = Path(__file__).parent.parent / "src"
         expected_modules = [
             "__init__.py",
             "main.py",
-            "spotify_client.py",
+            "youtube_client.py",
             "audio_analyzer.py",
             "similarity.py",
             "explainer.py",
@@ -72,15 +66,14 @@ class TestModuleImports:
         assert hasattr(main, "cli")
         assert hasattr(main, "search")
 
-    def test_import_spotify_client(self):
-        """Verify spotify_client module can be imported."""
-        from src import spotify_client
+    def test_import_youtube_client(self):
+        """Verify youtube_client module can be imported."""
+        from src import youtube_client
 
-        assert hasattr(spotify_client, "get_spotify_credentials")
-        assert hasattr(spotify_client, "authenticate_spotify")
-        assert hasattr(spotify_client, "search_track")
-        assert hasattr(spotify_client, "get_preview_audio")
-        assert hasattr(spotify_client, "search_candidates")
+        assert hasattr(youtube_client, "search_track")
+        assert hasattr(youtube_client, "get_audio")
+        assert hasattr(youtube_client, "search_candidates")
+        assert hasattr(youtube_client, "get_related_videos")
 
     def test_import_audio_analyzer(self):
         """Verify audio_analyzer module can be imported."""
@@ -201,79 +194,11 @@ class TestCLISetup:
         assert result.exit_code != 0
 
 
-class TestEnvironmentVariables:
-    """Test environment variable loading."""
-
-    def test_get_spotify_credentials_raises_without_env(self, monkeypatch):
-        """Verify get_spotify_credentials raises error when env vars not set."""
-        # Clear any existing env vars
-        monkeypatch.delenv("SPOTIFY_CLIENT_ID", raising=False)
-        monkeypatch.delenv("SPOTIFY_CLIENT_SECRET", raising=False)
-
-        from src.spotify_client import get_spotify_credentials
-
-        with pytest.raises(ValueError) as exc_info:
-            get_spotify_credentials()
-
-        assert "Spotify credentials not found" in str(exc_info.value)
-
-    def test_get_spotify_credentials_with_env(self, monkeypatch):
-        """Verify get_spotify_credentials returns credentials when set."""
-        monkeypatch.setenv("SPOTIFY_CLIENT_ID", "test_client_id")
-        monkeypatch.setenv("SPOTIFY_CLIENT_SECRET", "test_client_secret")
-
-        from src.spotify_client import get_spotify_credentials
-
-        client_id, client_secret = get_spotify_credentials()
-        assert client_id == "test_client_id"
-        assert client_secret == "test_client_secret"
-
-    def test_get_spotify_credentials_partial_env(self, monkeypatch):
-        """Verify raises error with only partial credentials."""
-        # Only client ID set
-        monkeypatch.setenv("SPOTIFY_CLIENT_ID", "test_client_id")
-        monkeypatch.delenv("SPOTIFY_CLIENT_SECRET", raising=False)
-
-        from src.spotify_client import get_spotify_credentials
-
-        with pytest.raises(ValueError):
-            get_spotify_credentials()
-
-
 class TestPlaceholderFunctions:
-    """Test that placeholder functions raise NotImplementedError."""
+    """Test that placeholder functions raise NotImplementedError.
 
-    def test_authenticate_spotify_not_implemented(self):
-        """Verify authenticate_spotify raises NotImplementedError."""
-        from src.spotify_client import authenticate_spotify
-
-        with pytest.raises(NotImplementedError) as exc_info:
-            authenticate_spotify()
-        assert "Step 2" in str(exc_info.value)
-
-    def test_search_track_not_implemented(self):
-        """Verify search_track raises NotImplementedError."""
-        from src.spotify_client import search_track
-
-        with pytest.raises(NotImplementedError) as exc_info:
-            search_track("test")
-        assert "Step 2" in str(exc_info.value)
-
-    def test_get_preview_audio_not_implemented(self):
-        """Verify get_preview_audio raises NotImplementedError."""
-        from src.spotify_client import get_preview_audio
-
-        with pytest.raises(NotImplementedError) as exc_info:
-            get_preview_audio("http://example.com")
-        assert "Step 2" in str(exc_info.value)
-
-    def test_search_candidates_not_implemented(self):
-        """Verify search_candidates raises NotImplementedError."""
-        from src.spotify_client import search_candidates
-
-        with pytest.raises(NotImplementedError) as exc_info:
-            search_candidates("rock", "Queen")
-        assert "Step 2" in str(exc_info.value)
+    Note: YouTube functions are now implemented and tested in test_youtube_client.py
+    """
 
     def test_analyze_melody_not_implemented(self):
         """Verify analyze_melody raises NotImplementedError."""
@@ -328,22 +253,6 @@ class TestPlaceholderFunctions:
         assert "Step 5" in str(exc_info.value)
 
 
-class TestEnvTemplateContent:
-    """Test .env.template has correct content."""
-
-    def test_env_template_contains_client_id(self):
-        """Verify .env.template contains SPOTIFY_CLIENT_ID."""
-        env_template_path = Path(__file__).parent.parent / ".env.template"
-        content = env_template_path.read_text()
-        assert "SPOTIFY_CLIENT_ID" in content
-
-    def test_env_template_contains_client_secret(self):
-        """Verify .env.template contains SPOTIFY_CLIENT_SECRET."""
-        env_template_path = Path(__file__).parent.parent / ".env.template"
-        content = env_template_path.read_text()
-        assert "SPOTIFY_CLIENT_SECRET" in content
-
-
 class TestPyprojectToml:
     """Test pyproject.toml is properly configured."""
 
@@ -353,7 +262,7 @@ class TestPyprojectToml:
         content = pyproject_path.read_text()
 
         required_deps = [
-            "spotipy",
+            "yt-dlp",
             "essentia",
             "faiss-cpu",
             "click",

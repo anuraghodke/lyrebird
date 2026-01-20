@@ -12,7 +12,7 @@ license = {text = "MIT"}
 authors = [
     {name = "Your Name", email = "your.email@example.com"}
 ]
-keywords = ["music", "similarity", "spotify", "audio", "cli"]
+keywords = ["music", "similarity", "youtube", "audio", "cli"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -23,7 +23,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "spotipy>=2.23.0",
+    "yt-dlp>=2024.1.0",
     "faiss-cpu>=1.7.4",
     "click>=8.1.0",
     "python-dotenv>=1.0.0",

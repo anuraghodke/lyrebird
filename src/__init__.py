@@ -1,7 +1,7 @@
 """
 CLI Music Similarity Tool
 
-A command-line tool that analyzes Spotify songs and finds similar tracks
+A command-line tool that analyzes YouTube songs and finds similar tracks
 based on melodic and rhythmic features using Essentia audio analysis.
 """
 
