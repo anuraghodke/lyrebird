@@ -198,31 +198,8 @@ class TestPlaceholderFunctions:
     """Test that placeholder functions raise NotImplementedError.
 
     Note: YouTube functions are now implemented and tested in test_youtube_client.py
+    Note: Audio analyzer functions are now implemented and tested in test_audio_analyzer.py
     """
-
-    def test_analyze_melody_not_implemented(self):
-        """Verify analyze_melody raises NotImplementedError."""
-        from src.audio_analyzer import analyze_melody
-
-        with pytest.raises(NotImplementedError) as exc_info:
-            analyze_melody(b"test")
-        assert "Step 3" in str(exc_info.value)
-
-    def test_analyze_rhythm_not_implemented(self):
-        """Verify analyze_rhythm raises NotImplementedError."""
-        from src.audio_analyzer import analyze_rhythm
-
-        with pytest.raises(NotImplementedError) as exc_info:
-            analyze_rhythm(b"test")
-        assert "Step 3" in str(exc_info.value)
-
-    def test_analyze_track_not_implemented(self):
-        """Verify analyze_track raises NotImplementedError."""
-        from src.audio_analyzer import analyze_track
-
-        with pytest.raises(NotImplementedError) as exc_info:
-            analyze_track(b"test")
-        assert "Step 3" in str(exc_info.value)
 
     def test_build_faiss_index_not_implemented(self):
         """Verify build_faiss_index raises NotImplementedError."""
