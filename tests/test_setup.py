@@ -11,8 +11,6 @@ Verifies:
 
 from pathlib import Path
 
-import pytest
-
 
 class TestProjectStructure:
     """Test that all required files and directories exist."""
@@ -192,42 +190,6 @@ class TestCLISetup:
         # Invalid type should fail
         result = runner.invoke(cli, ["search", "test", "--type", "invalid"])
         assert result.exit_code != 0
-
-
-class TestPlaceholderFunctions:
-    """Test that placeholder functions raise NotImplementedError.
-
-    Note: YouTube functions are now implemented and tested in test_youtube_client.py
-    Note: Audio analyzer functions are now implemented and tested in test_audio_analyzer.py
-    """
-
-    def test_build_faiss_index_not_implemented(self):
-        """Verify build_faiss_index raises NotImplementedError."""
-        import numpy as np
-
-        from src.similarity import build_faiss_index
-
-        with pytest.raises(NotImplementedError) as exc_info:
-            build_faiss_index(np.array([[1, 2, 3]]))
-        assert "Step 4" in str(exc_info.value)
-
-    def test_find_similar_not_implemented(self):
-        """Verify find_similar raises NotImplementedError."""
-        import numpy as np
-
-        from src.similarity import find_similar
-
-        with pytest.raises(NotImplementedError) as exc_info:
-            find_similar(np.array([1, 2, 3]), np.array([[1, 2, 3]]))
-        assert "Step 4" in str(exc_info.value)
-
-    def test_generate_reasoning_not_implemented(self):
-        """Verify generate_reasoning raises NotImplementedError."""
-        from src.explainer import generate_reasoning
-
-        with pytest.raises(NotImplementedError) as exc_info:
-            generate_reasoning({}, {})
-        assert "Step 5" in str(exc_info.value)
 
 
 class TestPyprojectToml:
