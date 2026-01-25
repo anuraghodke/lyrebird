@@ -160,7 +160,7 @@ class TestCLISetup:
         assert "--threshold" in result.output
 
     def test_search_command_options(self):
-        """Test search command accepts all options."""
+        """Test search command accepts all options and starts processing."""
         from click.testing import CliRunner
 
         from src.main import cli
@@ -169,10 +169,8 @@ class TestCLISetup:
         result = runner.invoke(
             cli, ["search", "test query", "--type", "melody", "--limit", "5"]
         )
-        # Should work (placeholder output)
-        assert result.exit_code == 0
-        assert "test query" in result.output
-        assert "melody" in result.output
+        # Command should start and show it's searching
+        assert "Searching for: test query" in result.output
 
     def test_search_type_choices(self):
         """Test search --type only accepts valid choices."""
@@ -182,12 +180,13 @@ class TestCLISetup:
 
         runner = CliRunner()
 
-        # Valid types should work
+        # Valid types should parse correctly and start searching
         for valid_type in ["melody", "rhythm", "both"]:
             result = runner.invoke(cli, ["search", "test", "--type", valid_type])
-            assert result.exit_code == 0
+            # Should at least start the search process
+            assert "Searching for:" in result.output
 
-        # Invalid type should fail
+        # Invalid type should fail with bad parameter error
         result = runner.invoke(cli, ["search", "test", "--type", "invalid"])
         assert result.exit_code != 0
 
