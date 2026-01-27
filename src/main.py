@@ -90,13 +90,13 @@ def _run_search(
         click.echo("Could not find track. Try a different search query.", err=True)
         sys.exit(1)
 
-    click.echo(f"Found: {ref_track['title']} by {ref_track['artist']}")
-    click.echo(f"       {ref_track['url']}")
+    click.echo(f"Found: {ref_track['name']} by {ref_track['artist']}")
+    click.echo(f"       {ref_track['video_url']}")
 
     # Step 2: Download and analyze reference track
     click.echo("\nAnalyzing reference track...")
     try:
-        ref_audio = get_audio(ref_track["video_id"])
+        ref_audio = get_audio(ref_track["track_id"])
     except Exception as e:
         click.echo(f"Failed to download audio: {e}", err=True)
         sys.exit(1)
@@ -121,7 +121,7 @@ def _run_search(
 
     # Use artist name to find similar music
     candidate_tracks = search_candidates(
-        query=f"{ref_track['artist']} similar music",
+        seed_query=f"{ref_track['artist']} similar music",
         limit=num_candidates,
     )
 
@@ -131,7 +131,7 @@ def _run_search(
 
     # Filter out the reference track itself
     candidate_tracks = [
-        c for c in candidate_tracks if c["video_id"] != ref_track["video_id"]
+        c for c in candidate_tracks if c["track_id"] != ref_track["track_id"]
     ]
 
     click.echo(f"Found {len(candidate_tracks)} candidates")
@@ -144,10 +144,10 @@ def _run_search(
     for i, candidate in enumerate(candidate_tracks):
         try:
             click.echo(
-                f"  [{i + 1}/{len(candidate_tracks)}] {candidate['title'][:50]}...",
+                f"  [{i + 1}/{len(candidate_tracks)}] {candidate['name'][:50]}...",
                 nl=False,
             )
-            audio = get_audio(candidate["video_id"])
+            audio = get_audio(candidate["track_id"])
             features = analyze_track(audio, feature_type)
             candidate_features.append(features)
             valid_candidates.append(candidate)
@@ -177,15 +177,15 @@ def _run_search(
 
     # Step 6: Display results with explanations
     click.echo("\n" + "=" * 60)
-    click.echo(f"Similar tracks to: {ref_track['title']}")
+    click.echo(f"Similar tracks to: {ref_track['name']}")
     click.echo("=" * 60)
 
     for rank, (idx, score) in enumerate(results, 1):
         candidate = valid_candidates[idx]
-        click.echo(f"\n{rank}. {candidate['title']}")
+        click.echo(f"\n{rank}. {candidate['name']}")
         click.echo(f"   Artist: {candidate['artist']}")
         click.echo(f"   Similarity: {score:.1%}")
-        click.echo(f"   URL: {candidate['url']}")
+        click.echo(f"   URL: {candidate['video_url']}")
 
         # Generate explanations
         explanations = generate_reasoning(

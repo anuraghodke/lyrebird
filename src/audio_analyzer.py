@@ -28,14 +28,17 @@ class AudioAnalysisError(Exception):
 
 def _ensure_essentia():
     """
-    Check that Essentia is installed.
+    Check that Essentia is installed and suppress noisy warnings.
 
     Raises:
         ImportError: If Essentia is not installed.
     """
     try:
-        import essentia  # noqa: F401
+        import essentia
         import essentia.standard  # noqa: F401
+
+        # Suppress informational warnings (like HPCP bandPreset warning)
+        essentia.log.warningActive = False
     except ImportError as e:
         raise ImportError(
             "Essentia is required for audio analysis. "
