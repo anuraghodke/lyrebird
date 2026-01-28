@@ -16,9 +16,68 @@ from dotenv import load_dotenv
 from src.audio_analyzer import AudioAnalysisError, analyze_track
 from src.explainer import generate_reasoning
 from src.similarity import find_similar
-from src.youtube_client import get_audio, search_candidates, search_track
+from src.youtube_client import get_audio, search_candidates, search_track, trim_audio
 
 load_dotenv()
+
+
+def _parse_time(time_str: str) -> float:
+    """
+    Parse a time string to seconds.
+
+    Accepts formats:
+    - "3:50" -> 230 seconds
+    - "230" -> 230 seconds
+    - "1:05:30" -> 3930 seconds
+
+    Args:
+        time_str: Time string to parse
+
+    Returns:
+        Time in seconds as float
+    """
+    time_str = time_str.strip()
+    parts = time_str.split(":")
+
+    if len(parts) == 1:
+        return float(parts[0])
+    elif len(parts) == 2:
+        minutes, seconds = parts
+        return float(minutes) * 60 + float(seconds)
+    elif len(parts) == 3:
+        hours, minutes, seconds = parts
+        return float(hours) * 3600 + float(minutes) * 60 + float(seconds)
+    else:
+        raise ValueError(f"Invalid time format: {time_str}")
+
+
+def _parse_interval(interval_str: str) -> tuple[float, float]:
+    """
+    Parse an interval string like "[3:50, 5:00]" or "[230, 300]".
+
+    Args:
+        interval_str: Interval string in format "[start, end]"
+
+    Returns:
+        Tuple of (start_seconds, end_seconds)
+    """
+    # Remove brackets and whitespace
+    cleaned = interval_str.strip().strip("[]")
+    parts = cleaned.split(",")
+
+    if len(parts) != 2:
+        raise ValueError(
+            f"Invalid interval format: {interval_str}. "
+            "Expected format: [start, end] e.g., [3:50, 5:00] or [230, 300]"
+        )
+
+    start = _parse_time(parts[0])
+    end = _parse_time(parts[1])
+
+    if start >= end:
+        raise ValueError(f"Start time ({start}s) must be less than end time ({end}s)")
+
+    return start, end
 
 
 @click.group()
@@ -55,8 +114,14 @@ def cli():
     type=int,
     help="Number of candidate tracks to analyze",
 )
+@click.option(
+    "--interval",
+    default=None,
+    type=str,
+    help="Time interval to analyze, e.g., '[3:50, 5:00]' or '[230, 300]'",
+)
 def search(
-    query: str, feature_type: str, limit: int, threshold: float, candidates: int
+    query: str, feature_type: str, limit: int, threshold: float, candidates: int, interval: str | None
 ):
     """Search for songs similar to QUERY based on audio features.
 
@@ -67,9 +132,19 @@ def search(
         lyrebird search "Rick Astley - Never Gonna Give You Up"
         lyrebird search "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
         lyrebird search dQw4w9WgXcQ --type melody --limit 3
+        lyrebird search "Redbone" --interval "[3:50, 5:00]"
     """
+    # Parse interval if provided
+    parsed_interval = None
+    if interval:
+        try:
+            parsed_interval = _parse_interval(interval)
+        except ValueError as e:
+            click.echo(f"Error: {e}", err=True)
+            sys.exit(1)
+
     try:
-        _run_search(query, feature_type, limit, threshold, candidates)
+        _run_search(query, feature_type, limit, threshold, candidates, parsed_interval)
     except KeyboardInterrupt:
         click.echo("\n\nSearch cancelled.")
         sys.exit(1)
@@ -79,7 +154,8 @@ def search(
 
 
 def _run_search(
-    query: str, feature_type: str, limit: int, threshold: float, num_candidates: int
+    query: str, feature_type: str, limit: int, threshold: float, num_candidates: int,
+    interval: tuple[float, float] | None = None
 ):
     """Run the similarity search pipeline."""
     # Step 1: Find reference track
@@ -94,12 +170,25 @@ def _run_search(
     click.echo(f"       {ref_track['video_url']}")
 
     # Step 2: Download and analyze reference track
-    click.echo("\nAnalyzing reference track...")
+    if interval:
+        start, end = interval
+        click.echo(f"\nAnalyzing reference track (interval {start:.0f}s - {end:.0f}s)...")
+    else:
+        click.echo("\nAnalyzing reference track...")
+
     try:
         ref_audio = get_audio(ref_track["track_id"])
     except Exception as e:
         click.echo(f"Failed to download audio: {e}", err=True)
         sys.exit(1)
+
+    # Trim audio if interval specified
+    if interval:
+        try:
+            ref_audio = trim_audio(ref_audio, interval[0], interval[1])
+        except (ValueError, RuntimeError) as e:
+            click.echo(f"Failed to trim audio: {e}", err=True)
+            sys.exit(1)
 
     try:
         ref_features = analyze_track(ref_audio, feature_type)

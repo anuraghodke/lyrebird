@@ -320,6 +320,61 @@ def get_audio(video_url_or_id: str, timeout: int = 120) -> bytes:
             raise RuntimeError(f"Failed to download audio: {e}") from e
 
 
+def trim_audio(audio_bytes: bytes, start_seconds: float, end_seconds: float) -> bytes:
+    """
+    Trim audio to a specific time interval using ffmpeg.
+
+    Args:
+        audio_bytes: Raw audio data as bytes (MP3 format)
+        start_seconds: Start time in seconds
+        end_seconds: End time in seconds
+
+    Returns:
+        Trimmed audio data as bytes (MP3 format)
+
+    Raises:
+        ValueError: If start >= end or times are negative
+        RuntimeError: If ffmpeg fails
+    """
+    if start_seconds < 0 or end_seconds < 0:
+        raise ValueError("Start and end times must be non-negative")
+    if start_seconds >= end_seconds:
+        raise ValueError("Start time must be less than end time")
+
+    duration = end_seconds - start_seconds
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        input_file = Path(tmpdir) / "input.mp3"
+        output_file = Path(tmpdir) / "output.mp3"
+
+        input_file.write_bytes(audio_bytes)
+
+        try:
+            subprocess.run(
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-i", str(input_file),
+                    "-ss", str(start_seconds),
+                    "-t", str(duration),
+                    "-c", "copy",
+                    str(output_file),
+                ],
+                capture_output=True,
+                check=True,
+                timeout=30,
+            )
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"ffmpeg failed to trim audio: {e.stderr.decode()}") from e
+        except subprocess.TimeoutExpired:
+            raise RuntimeError("ffmpeg timed out while trimming audio") from None
+
+        if not output_file.exists():
+            raise RuntimeError("Trimmed audio file not created")
+
+        return output_file.read_bytes()
+
+
 def get_related_videos(video_id: str, limit: int = 20) -> list[dict]:
     """
     Get related videos for a given video.
