@@ -46,6 +46,7 @@ SAFE_BUILTINS = {
     "True": True,
     "False": False,
     "None": None,
+    "__import__": __import__,  # Allow imports for essentia
 }
 
 

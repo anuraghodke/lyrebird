@@ -197,34 +197,6 @@ def _run_search(
     fn_name: str | None = None,
 ):
     """Run the similarity search pipeline."""
-    # Handle custom comparison function
-    comparison_func = None
-    generated_fn_name = None
-
-    if nl_prompt:
-        click.echo(f"Generating comparison function for: {nl_prompt}")
-        try:
-            generated_fn_name, function_code = generate_comparison_function(nl_prompt)
-            click.echo(f"Generated function: {generated_fn_name}")
-
-            # Save the function
-            save_function(generated_fn_name, function_code, nl_prompt)
-            click.echo(f"Saved to generated_functions.py")
-
-            # Compile for use
-            comparison_func = compile_and_execute(function_code, generated_fn_name)
-        except Exception as e:
-            click.echo(f"Failed to generate comparison function: {e}", err=True)
-            sys.exit(1)
-
-    elif fn_name:
-        click.echo(f"Loading saved function: {fn_name}")
-        try:
-            comparison_func = load_function_from_file(fn_name)
-        except ValueError as e:
-            click.echo(f"Error: {e}", err=True)
-            sys.exit(1)
-
     # Step 1: Find reference track
     click.echo(f"Searching for: {query}")
     ref_track = search_track(query)
@@ -236,12 +208,12 @@ def _run_search(
     click.echo(f"Found: {ref_track['name']} by {ref_track['artist']}")
     click.echo(f"       {ref_track['video_url']}")
 
-    # Step 2: Download and analyze reference track
+    # Step 2: Download reference track (before generating function to avoid wasted API calls)
     if interval:
         start, end = interval
-        click.echo(f"\nAnalyzing reference track (interval {start:.0f}s - {end:.0f}s)...")
+        click.echo(f"\nDownloading reference track (interval {start:.0f}s - {end:.0f}s)...")
     else:
-        click.echo("\nAnalyzing reference track...")
+        click.echo("\nDownloading reference track...")
 
     try:
         ref_audio = get_audio(ref_track["track_id"])
@@ -257,6 +229,36 @@ def _run_search(
             click.echo(f"Failed to trim audio: {e}", err=True)
             sys.exit(1)
 
+    # Step 3: Generate or load comparison function (after successful download)
+    comparison_func = None
+    generated_fn_name = None
+
+    if nl_prompt:
+        click.echo(f"\nGenerating comparison function for: {nl_prompt}")
+        try:
+            generated_fn_name, function_code = generate_comparison_function(nl_prompt)
+            click.echo(f"Generated function: {generated_fn_name}")
+
+            # Save the function
+            save_function(generated_fn_name, function_code, nl_prompt)
+            click.echo(f"Saved to generated_functions.py")
+
+            # Compile for use
+            comparison_func = compile_and_execute(function_code, generated_fn_name)
+        except Exception as e:
+            click.echo(f"Failed to generate comparison function: {e}", err=True)
+            sys.exit(1)
+
+    elif fn_name:
+        click.echo(f"\nLoading saved function: {fn_name}")
+        try:
+            comparison_func = load_function_from_file(fn_name)
+        except ValueError as e:
+            click.echo(f"Error: {e}", err=True)
+            sys.exit(1)
+
+    # Step 4: Analyze reference track
+    click.echo("\nAnalyzing reference track...")
     try:
         ref_features = analyze_track(ref_audio, feature_type)
     except AudioAnalysisError as e:
@@ -299,11 +301,9 @@ def _run_search(
     valid_candidates = []
 
     for i, candidate in enumerate(candidate_tracks):
+        prefix = f"  [{i + 1}/{len(candidate_tracks)}]"
+        name = candidate['name'][:50]
         try:
-            click.echo(
-                f"  [{i + 1}/{len(candidate_tracks)}] {candidate['name'][:50]}...",
-                nl=False,
-            )
             audio = get_audio(candidate["track_id"])
 
             if comparison_func:
@@ -316,9 +316,9 @@ def _run_search(
                 candidate_features.append(features)
 
             valid_candidates.append(candidate)
-            click.echo(" ✓")
+            click.echo(f"{prefix} ✓ {name}")
         except Exception as e:
-            click.echo(f" ✗ ({e})")
+            click.echo(f"{prefix} ✗ {name} ({e})")
             continue
 
     if not valid_candidates:
@@ -335,12 +335,13 @@ def _run_search(
         ref_audio_array = load_audio_from_bytes(ref_audio)
         results = []
         for i, cand_audio in enumerate(candidate_audio_data):
+            candidate_name = valid_candidates[i]['name'][:50]
             try:
                 score = run_comparison(comparison_func, ref_audio_array, cand_audio)
                 if score >= threshold:
                     results.append((i, score))
             except RuntimeError as e:
-                click.echo(f"Warning: Comparison failed for candidate {i}: {e}", err=True)
+                click.echo(f"Warning: Comparison failed for '{candidate_name}': {e}", err=True)
                 continue
 
         # Sort by score descending and limit
