@@ -46,7 +46,7 @@ def _ensure_essentia():
         ) from e
 
 
-def _load_audio_from_bytes(audio_bytes: bytes) -> np.ndarray:
+def load_audio_from_bytes(audio_bytes: bytes) -> np.ndarray:
     """
     Load audio from bytes into a numpy array.
 
@@ -95,7 +95,7 @@ def _load_audio_from_bytes(audio_bytes: bytes) -> np.ndarray:
         Path(tmp_path).unlink(missing_ok=True)
 
 
-def _extract_hpcp_features(audio: np.ndarray) -> np.ndarray:
+def extract_hpcp_features(audio: np.ndarray) -> np.ndarray:
     """
     Extract HPCP (Harmonic Pitch Class Profile) features.
 
@@ -154,7 +154,7 @@ def _extract_hpcp_features(audio: np.ndarray) -> np.ndarray:
     return np.concatenate([hpcp_mean, hpcp_std])
 
 
-def _extract_key_features(audio: np.ndarray) -> np.ndarray:
+def extract_key_features(audio: np.ndarray) -> np.ndarray:
     """
     Extract key/mode features.
 
@@ -218,7 +218,7 @@ def _extract_key_features(audio: np.ndarray) -> np.ndarray:
     return np.array([strength, mode_value])
 
 
-def _extract_rhythm_features(audio: np.ndarray) -> np.ndarray:
+def extract_rhythm_features(audio: np.ndarray) -> np.ndarray:
     """
     Extract rhythm features.
 
@@ -340,13 +340,13 @@ def analyze_melody(audio_bytes: bytes) -> np.ndarray:
     _ensure_essentia()
 
     # Load audio from bytes
-    audio = _load_audio_from_bytes(audio_bytes)
+    audio = load_audio_from_bytes(audio_bytes)
 
     # Extract HPCP features (24 dims)
-    hpcp_features = _extract_hpcp_features(audio)
+    hpcp_features = extract_hpcp_features(audio)
 
     # Extract key features (2 dims)
-    key_features = _extract_key_features(audio)
+    key_features = extract_key_features(audio)
 
     # Combine into melody feature vector (26 dims)
     return np.concatenate([hpcp_features, key_features])
@@ -378,10 +378,10 @@ def analyze_rhythm(audio_bytes: bytes) -> np.ndarray:
     _ensure_essentia()
 
     # Load audio from bytes
-    audio = _load_audio_from_bytes(audio_bytes)
+    audio = load_audio_from_bytes(audio_bytes)
 
     # Extract rhythm features (16 dims)
-    return _extract_rhythm_features(audio)
+    return extract_rhythm_features(audio)
 
 
 def analyze_track(audio_bytes: bytes, feature_type: str = "both") -> np.ndarray:
@@ -412,18 +412,18 @@ def analyze_track(audio_bytes: bytes, feature_type: str = "both") -> np.ndarray:
     _ensure_essentia()
 
     # Load audio from bytes once
-    audio = _load_audio_from_bytes(audio_bytes)
+    audio = load_audio_from_bytes(audio_bytes)
 
     if feature_type == "melody":
-        hpcp_features = _extract_hpcp_features(audio)
-        key_features = _extract_key_features(audio)
+        hpcp_features = extract_hpcp_features(audio)
+        key_features = extract_key_features(audio)
         return np.concatenate([hpcp_features, key_features])
 
     elif feature_type == "rhythm":
-        return _extract_rhythm_features(audio)
+        return extract_rhythm_features(audio)
 
     else:  # both
-        hpcp_features = _extract_hpcp_features(audio)
-        key_features = _extract_key_features(audio)
-        rhythm_features = _extract_rhythm_features(audio)
+        hpcp_features = extract_hpcp_features(audio)
+        key_features = extract_key_features(audio)
+        rhythm_features = extract_rhythm_features(audio)
         return np.concatenate([hpcp_features, key_features, rhythm_features])
