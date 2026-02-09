@@ -11,6 +11,10 @@ from pathlib import Path
 
 import yt_dlp
 
+# Duration bounds for candidate filtering (seconds)
+MIN_TRACK_DURATION_S = 60
+MAX_TRACK_DURATION_S = 600
+
 # YouTube video ID pattern (11 characters, alphanumeric with - and _)
 VIDEO_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{11}$")
 
@@ -456,11 +460,11 @@ def search_candidates(
 
                 # Skip very short videos (likely not full songs)
                 duration = entry.get("duration", 0) or 0
-                if duration < 60:  # Less than 1 minute
+                if duration < MIN_TRACK_DURATION_S:
                     continue
 
                 # Skip very long videos (likely compilations/mixes)
-                if duration > 600:  # More than 10 minutes
+                if duration > MAX_TRACK_DURATION_S:
                     continue
 
                 track_info = _extract_track_info(entry)

@@ -7,6 +7,7 @@ Usage:
     lyrebird search "https://youtube.com/watch?v=..." --type both
 """
 
+import logging
 import sys
 
 import click
@@ -14,6 +15,7 @@ import numpy as np
 from dotenv import load_dotenv
 
 from src.audio_analyzer import AudioAnalysisError, analyze_track, load_audio_from_bytes
+from src.candidate_finder import get_diverse_candidates
 from src.code_generator import (
     delete_function,
     generate_comparison_function,
@@ -23,7 +25,9 @@ from src.code_generator import (
 from src.explainer import generate_reasoning
 from src.sandbox import compile_and_execute, load_function_from_file, run_comparison
 from src.similarity import find_similar
-from src.youtube_client import get_audio, search_candidates, search_track, trim_audio
+from src.youtube_client import get_audio, search_track, trim_audio
+
+logging.basicConfig(level=logging.WARNING)
 
 load_dotenv()
 
@@ -277,20 +281,11 @@ def _run_search(
     # Step 3: Find candidate tracks
     click.echo(f"\nSearching for {num_candidates} candidate tracks...")
 
-    # Use artist name to find similar music
-    candidate_tracks = search_candidates(
-        seed_query=f"{ref_track['artist']} similar music",
-        limit=num_candidates,
-    )
+    candidate_tracks = get_diverse_candidates(ref_track, limit=num_candidates)
 
     if not candidate_tracks:
         click.echo("No candidate tracks found.", err=True)
         sys.exit(1)
-
-    # Filter out the reference track itself
-    candidate_tracks = [
-        c for c in candidate_tracks if c["track_id"] != ref_track["track_id"]
-    ]
 
     click.echo(f"Found {len(candidate_tracks)} candidates")
 
